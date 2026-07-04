@@ -1,0 +1,6 @@
+generateImage = {import:text-to-image-plugin}
+
+$meta
+  title = IVAN PHOTO LAB — IMG2IMG TEST BENCH
+  description = Banco de pruebas privado para referenceImage
+  tags = private, img2img, test

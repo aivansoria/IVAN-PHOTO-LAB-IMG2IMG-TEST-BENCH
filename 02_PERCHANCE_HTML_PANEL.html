@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IVAN PHOTO LAB — IMG2IMG TEST BENCH</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1018;
+      --panel: #121a26;
+      --panel-2: #182334;
+      --line: #2a3a50;
+      --text: #eef4ff;
+      --muted: #9fb0c7;
+      --accent: #5bbcff;
+      --accent-2: #2279b8;
+      --danger: #ff7474;
+      --warning: #ffcf70;
+      --success: #70d6a3;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    .app {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1, h2, p { margin-top: 0; }
+    h1 { margin-bottom: 6px; font-size: clamp(1.55rem, 3vw, 2.35rem); }
+    h2 { font-size: 1.05rem; }
+
+    .subtitle { color: var(--muted); margin-bottom: 18px; }
+
+    .notice {
+      border: 1px solid #795d23;
+      background: #211b10;
+      color: var(--warning);
+      padding: 12px 14px;
+      border-radius: 10px;
+      margin-bottom: 18px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 14px 35px rgba(0, 0, 0, 0.2);
+    }
+
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: #dce8f8;
+      font-weight: 650;
+      font-size: 0.92rem;
+    }
+
+    input, textarea, select, button {
+      width: 100%;
+      font: inherit;
+    }
+
+    input, textarea, select {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #0d1520;
+      color: var(--text);
+      padding: 10px 11px;
+    }
+
+    textarea { min-height: 108px; resize: vertical; }
+    input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent-2); border-color: var(--accent); }
+
+    .inline-fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .preview-shell {
+      min-height: 210px;
+      border: 1px dashed #3b536f;
+      border-radius: 12px;
+      background: #0a111a;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .preview-shell img {
+      display: none;
+      width: 100%;
+      max-height: 430px;
+      object-fit: contain;
+    }
+
+    .preview-empty { color: var(--muted); padding: 30px; text-align: center; }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button, .download-link {
+      border: 1px solid transparent;
+      border-radius: 9px;
+      padding: 10px 12px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    button.primary { background: var(--accent); color: #05111b; }
+    button.secondary { background: #24354b; color: var(--text); border-color: #35506e; }
+    button.danger { background: #3a2026; color: #ffb3b3; border-color: #68323d; }
+    button:disabled { opacity: 0.48; cursor: not-allowed; }
+
+    .status {
+      min-height: 46px;
+      margin-top: 14px;
+      padding: 11px 12px;
+      border-radius: 9px;
+      background: #0c141f;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      white-space: pre-wrap;
+    }
+
+    .status.busy { color: var(--warning); }
+    .status.ok { color: var(--success); }
+    .status.error { color: var(--danger); }
+
+    .error-box {
+      display: none;
+      margin-top: 12px;
+      border: 1px solid #783c45;
+      background: #271419;
+      color: #ffb4bd;
+      border-radius: 9px;
+      padding: 12px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .results-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .results-head h2 { margin-bottom: 0; }
+    .result-count { color: var(--muted); font-size: 0.88rem; }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+    }
+
+    .result-card {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .result-card h3 { margin: 0; padding: 11px 12px; font-size: 0.98rem; }
+
+    .result-card img {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      object-fit: contain;
+      display: block;
+      background: #080d14;
+    }
+
+    .result-meta { padding: 10px 12px; color: var(--muted); font-size: 0.84rem; }
+    .download-link { display: block; margin: 0 12px 12px; background: #203b52; color: #bfe6ff; border: 1px solid #315c7d; }
+
+    .empty-results {
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 44px 20px;
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .app { padding: 14px; }
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .inline-fields, .actions { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>IVAN PHOTO LAB — IMG2IMG TEST BENCH</h1>
+    <p class="subtitle">Minimal referenceImage contract test for the official Perchance text-to-image plugin.</p>
+
+    <div class="notice" role="note">
+      Use únicamente imágenes sintéticas o imágenes de adultos con consentimiento. La imagen de referencia será enviada al servicio de generación de Perchance.
+    </div>
+
+    <div class="layout">
+      <section class="panel" aria-labelledby="controlsTitle">
+        <h2 id="controlsTitle">Test inputs</h2>
+
+        <div class="field">
+          <label for="imageInput">Reference image</label>
+          <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp">
+          <div class="preview-shell">
+            <span id="previewEmpty" class="preview-empty">Select a PNG, JPEG or WebP image.</span>
+            <img id="originalPreview" alt="Original reference preview">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="promptInput">Prompt</label>
+          <textarea id="promptInput">Change the background to an elegant Madrid rooftop terrace at sunset. Preserve the same adult subject, facial identity, hairstyle, skin tone, body proportions, clothing and photographic realism.</textarea>
+        </div>
+
+        <div class="field">
+          <label for="negativePromptInput">Negative Prompt</label>
+          <textarea id="negativePromptInput">different person, altered face, face swap, changed identity, changed hairstyle, changed clothing, changed body proportions, duplicate person, extra limbs, deformed anatomy, illustration, cartoon, CGI, plastic skin, blurry face</textarea>
+        </div>
+
+        <div class="inline-fields">
+          <div class="field">
+            <label for="seedInput">Seed</label>
+            <input id="seedInput" type="number" step="1" value="446954991">
+          </div>
+          <div class="field">
+            <label for="guidanceInput">Guidance Scale</label>
+            <input id="guidanceInput" type="number" min="1" max="30" step="1" value="7">
+          </div>
+          <div class="field">
+            <label for="resolutionInput">Resolution</label>
+            <select id="resolutionInput">
+              <option value="512x512">512x512</option>
+              <option value="768x768">768x768</option>
+              <option value="512x768" selected>512x768</option>
+              <option value="768x512">768x512</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="blurInput">Blur</label>
+            <select id="blurInput">
+              <option value="0">0</option>
+              <option value="0.15" selected>0.15</option>
+              <option value="0.50">0.50</option>
+              <option value="1.00">1.00</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="generateBtn" class="primary" type="button">Generate Selected Blur</button>
+          <button id="matrixBtn" class="primary" type="button">Run Full Blur Matrix</button>
+          <button id="clearBtn" class="danger" type="button">Clear Results</button>
+          <button id="exportBtn" class="secondary" type="button">Export Metadata JSON</button>
+        </div>
+
+        <div id="statusBox" class="status" role="status" aria-live="polite">Ready. Select a synthetic or consented adult reference image.</div>
+        <pre id="errorBox" class="error-box" role="alert"></pre>
+      </section>
+
+      <section class="panel" aria-labelledby="resultsTitle">
+        <div class="results-head">
+          <h2 id="resultsTitle">Comparable results</h2>
+          <span id="resultCount" class="result-count">0 generations</span>
+        </div>
+        <div id="resultsGrid" class="results-grid">
+          <div id="emptyResults" class="empty-results">Results will appear here. Matrix mode keeps every parameter fixed except referenceImage.blur.</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var referenceDataUrl = null;
+      var history = [];
+      var running = false;
+      var blurMatrix = [0, 0.15, 0.50, 1.00];
+
+      var imageInput = document.getElementById("imageInput");
+      var originalPreview = document.getElementById("originalPreview");
+      var previewEmpty = document.getElementById("previewEmpty");
+      var promptInput = document.getElementById("promptInput");
+      var negativePromptInput = document.getElementById("negativePromptInput");
+      var seedInput = document.getElementById("seedInput");
+      var guidanceInput = document.getElementById("guidanceInput");
+      var resolutionInput = document.getElementById("resolutionInput");
+      var blurInput = document.getElementById("blurInput");
+      var generateBtn = document.getElementById("generateBtn");
+      var matrixBtn = document.getElementById("matrixBtn");
+      var clearBtn = document.getElementById("clearBtn");
+      var exportBtn = document.getElementById("exportBtn");
+      var statusBox = document.getElementById("statusBox");
+      var errorBox = document.getElementById("errorBox");
+      var resultsGrid = document.getElementById("resultsGrid");
+      var resultCount = document.getElementById("resultCount");
+
+      function setStatus(message, kind) {
+        statusBox.textContent = message;
+        statusBox.className = "status" + (kind ? " " + kind : "");
+      }
+
+      function showError(error) {
+        var text = error && error.stack ? error.stack : String(error);
+        errorBox.textContent = text;
+        errorBox.style.display = "block";
+        setStatus("Generation failed. Full error shown below.", "error");
+        console.error(error);
+      }
+
+      function clearError() {
+        errorBox.textContent = "";
+        errorBox.style.display = "none";
+      }
+
+      function setRunning(value) {
+        running = value;
+        generateBtn.disabled = value;
+        matrixBtn.disabled = value;
+        clearBtn.disabled = value;
+        exportBtn.disabled = value;
+        imageInput.disabled = value;
+      }
+
+      function createTestId() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+          return window.crypto.randomUUID();
+        }
+        return "test-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+      }
+
+      function rawType(value) {
+        if (value === null) return "null";
+        if (Array.isArray(value)) return "array";
+        return typeof value;
+      }
+
+      function isValidImageUrl(value) {
+        if (typeof value !== "string" || value.length === 0) return false;
+        return value.indexOf("data:image/") === 0 || value.indexOf("blob:") === 0 || value.indexOf("https://") === 0 || value.indexOf("http://") === 0;
+      }
+
+      async function extractImageUrl(result) {
+        var candidate = null;
+        if (typeof result === "string") {
+          candidate = result;
+        } else if (result && typeof result === "object") {
+          candidate = result.dataUrl || result.imageDataUrl || result.url || null;
+        }
+
+        if (candidate && typeof candidate.then === "function") {
+          candidate = await candidate;
+        }
+
+        if (!isValidImageUrl(candidate)) {
+          throw new Error("The plugin result did not contain a valid image URL. Result type: " + rawType(result));
+        }
+        return candidate;
+      }
+
+      function readInputs(blurValue) {
+        var seed = Number(seedInput.value);
+        var guidanceScale = Number(guidanceInput.value);
+        var prompt = promptInput.value.trim();
+        var negativePrompt = negativePromptInput.value.trim();
+
+        if (!referenceDataUrl) throw new Error("Select a reference image before generating.");
+        if (!prompt) throw new Error("Prompt cannot be empty.");
+        if (!Number.isInteger(seed)) throw new Error("Seed must be an integer.");
+        if (!Number.isInteger(guidanceScale) || guidanceScale < 1 || guidanceScale > 30) {
+          throw new Error("Guidance Scale must be an integer between 1 and 30.");
+        }
+
+        return {
+          prompt: prompt,
+          negativePrompt: negativePrompt,
+          seed: seed,
+          resolution: resolutionInput.value,
+          guidanceScale: guidanceScale,
+          blur: Number(blurValue)
+        };
+      }
+
+      function clearResultCards() {
+        resultsGrid.innerHTML = "";
+      }
+
+      function addOriginalCard() {
+        if (!referenceDataUrl) return;
+        var card = document.createElement("article");
+        card.className = "result-card";
+
+        var title = document.createElement("h3");
+        title.textContent = "Original";
+        var img = document.createElement("img");
+        img.src = referenceDataUrl;
+        img.alt = "Original reference image";
+        var meta = document.createElement("div");
+        meta.className = "result-meta";
+        meta.textContent = "Local preview before transmission";
+
+        card.appendChild(title);
+        card.appendChild(img);
+        card.appendChild(meta);
+        resultsGrid.appendChild(card);
+      }
+
+      function addResultCard(record) {
+        var card = document.createElement("article");
+        card.className = "result-card";
+
+        var title = document.createElement("h3");
+        title.textContent = "Blur " + record.referenceImageBlur;
+        var img = document.createElement("img");
+        img.src = record.generatedImageUrl;
+        img.alt = "Generated result for blur " + record.referenceImageBlur;
+        var meta = document.createElement("div");
+        meta.className = "result-meta";
+        meta.textContent = record.elapsedMs + " ms · seed " + record.seedRequested + " · " + record.resolution;
+        var download = document.createElement("a");
+        download.className = "download-link";
+        download.href = record.generatedImageUrl;
+        download.download = "ivan-photo-lab-blur-" + String(record.referenceImageBlur).replace(".", "-") + ".png";
+        download.textContent = "Download image";
+
+        card.appendChild(title);
+        card.appendChild(img);
+        card.appendChild(meta);
+        card.appendChild(download);
+        resultsGrid.appendChild(card);
+      }
+
+      function updateCount() {
+        resultCount.textContent = history.length + (history.length === 1 ? " generation" : " generations");
+      }
+
+      async function runGeneration(params, positionText) {
+        var startedAt = new Date();
+        var startedMs = Date.now();
+        setStatus("Generating " + positionText + " with blur " + params.blur + "…", "busy");
+
+        var rawResult = await generateImage({
+          prompt: params.prompt,
+          negativePrompt: params.negativePrompt,
+          seed: params.seed,
+          resolution: params.resolution,
+          guidanceScale: params.guidanceScale,
+          referenceImage: {
+            url: referenceDataUrl,
+            blur: Number(params.blur)
+          }
+        });
+
+        console.log("IMG2IMG raw plugin result", rawResult);
+        var generatedImageUrl = await extractImageUrl(rawResult);
+        var elapsedMs = Date.now() - startedMs;
+        var record = {
+          testId: createTestId(),
+          createdAt: startedAt.toISOString(),
+          prompt: params.prompt,
+          negativePrompt: params.negativePrompt,
+          seedRequested: params.seed,
+          resolution: params.resolution,
+          guidanceScale: params.guidanceScale,
+          referenceImageBlur: params.blur,
+          elapsedMs: elapsedMs,
+          rawResultType: rawType(rawResult),
+          generatedImageUrl: generatedImageUrl
+        };
+
+        history.push(record);
+        addResultCard(record);
+        updateCount();
+        setStatus("Completed " + positionText + " in " + elapsedMs + " ms.", "ok");
+        return record;
+      }
+
+      imageInput.addEventListener("change", function () {
+        clearError();
+        var file = imageInput.files && imageInput.files[0];
+        if (!file) return;
+
+        var allowed = ["image/png", "image/jpeg", "image/webp"];
+        if (allowed.indexOf(file.type) === -1) {
+          imageInput.value = "";
+          showError(new Error("Unsupported file type: " + file.type));
+          return;
+        }
+
+        var reader = new FileReader();
+        reader.onload = function () {
+          referenceDataUrl = String(reader.result || "");
+          originalPreview.src = referenceDataUrl;
+          originalPreview.style.display = "block";
+          previewEmpty.style.display = "none";
+          setStatus("Reference image loaded in memory. No generation has started.", "ok");
+        };
+        reader.onerror = function () {
+          showError(reader.error || new Error("Could not read the selected image."));
+        };
+        reader.readAsDataURL(file);
+      });
+
+      generateBtn.addEventListener("click", async function () {
+        if (running) return;
+        clearError();
+        setRunning(true);
+        try {
+          var params = readInputs(blurInput.value);
+          if (!resultsGrid.querySelector(".result-card")) addOriginalCard();
+          await runGeneration(params, "selected test");
+        } catch (error) {
+          showError(error);
+        } finally {
+          setRunning(false);
+        }
+      });
+
+      matrixBtn.addEventListener("click", async function () {
+        if (running) return;
+        clearError();
+        setRunning(true);
+        try {
+          var fixed = readInputs(blurMatrix[0]);
+          clearResultCards();
+          addOriginalCard();
+
+          for (var i = 0; i < blurMatrix.length; i += 1) {
+            var params = {
+              prompt: fixed.prompt,
+              negativePrompt: fixed.negativePrompt,
+              seed: fixed.seed,
+              resolution: fixed.resolution,
+              guidanceScale: fixed.guidanceScale,
+              blur: blurMatrix[i]
+            };
+            await runGeneration(params, "matrix test " + (i + 1) + " of " + blurMatrix.length);
+          }
+          setStatus("Full blur matrix completed sequentially with a fixed seed.", "ok");
+        } catch (error) {
+          showError(error);
+        } finally {
+          setRunning(false);
+        }
+      });
+
+      clearBtn.addEventListener("click", function () {
+        if (running) return;
+        history = [];
+        clearResultCards();
+        var empty = document.createElement("div");
+        empty.className = "empty-results";
+        empty.textContent = "Results cleared. The reference image remains loaded in memory.";
+        resultsGrid.appendChild(empty);
+        updateCount();
+        clearError();
+        setStatus("Results and metadata history cleared.", "ok");
+      });
+
+      exportBtn.addEventListener("click", function () {
+        if (running) return;
+        clearError();
+        try {
+          var json = JSON.stringify(history, null, 2);
+          var blob = new Blob([json], { type: "application/json" });
+          var objectUrl = URL.createObjectURL(blob);
+          var link = document.createElement("a");
+          link.href = objectUrl;
+          link.download = "ivan-photo-lab-img2img-metadata.json";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.setTimeout(function () { URL.revokeObjectURL(objectUrl); }, 1000);
+          setStatus("Metadata JSON exported with " + history.length + " records.", "ok");
+        } catch (error) {
+          showError(error);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

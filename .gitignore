@@ -1,0 +1,21 @@
+# Third-party Perchance snapshots used only for local audit
+01_text-to-image-plugin.html
+02_t2i-framework-plugin-v2.html
+03_ai-image-modifier.html
+04_pretty-ai-video-generator.html
+05_image-to-video-loop-creator.html
+06_demo-wan-image-to-video.html
+07_image-to-image.html
+08_image-to-image-dz10cs63ln.html
+09_image-editor-ai.html
+10_modify-image-v2.html
+11_ai-powered-image-editor.html
+
+# Downloaded snapshot of the deployed generator
+13_ivan-photo-lab-img2img-test-bench__saved.html
+
+# Test exports
+ivan-photo-lab-img2img-metadata.json
+*.webm
+*.mp4
+*.gif
