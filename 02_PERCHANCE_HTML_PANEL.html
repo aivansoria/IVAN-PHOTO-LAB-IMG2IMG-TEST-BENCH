@@ -119,6 +119,23 @@
 
     .preview-empty { color: var(--muted); padding: 30px; text-align: center; }
 
+    .file-info {
+      margin-top: 10px;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: #0d1520;
+      color: var(--muted);
+      font-size: 0.84rem;
+      overflow-wrap: anywhere;
+    }
+
+    .file-info.warning {
+      border-color: #795d23;
+      background: #211b10;
+      color: var(--warning);
+    }
+
     .actions {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -243,6 +260,7 @@
             <span id="previewEmpty" class="preview-empty">Select a PNG, JPEG or WebP image.</span>
             <img id="originalPreview" alt="Original reference preview">
           </div>
+          <div id="referenceInfo" class="file-info">No reference file loaded.</div>
         </div>
 
         <div class="field">
@@ -312,6 +330,7 @@
       "use strict";
 
       var referenceDataUrl = null;
+      var referenceFileInfo = null;
       var history = [];
       var running = false;
       var blurMatrix = [0, 0.15, 0.50, 1.00];
@@ -319,6 +338,7 @@
       var imageInput = document.getElementById("imageInput");
       var originalPreview = document.getElementById("originalPreview");
       var previewEmpty = document.getElementById("previewEmpty");
+      var referenceInfo = document.getElementById("referenceInfo");
       var promptInput = document.getElementById("promptInput");
       var negativePromptInput = document.getElementById("negativePromptInput");
       var seedInput = document.getElementById("seedInput");
@@ -424,6 +444,27 @@
         resultsGrid.innerHTML = "";
       }
 
+      function renderReferenceInfo() {
+        if (!referenceFileInfo) {
+          referenceInfo.className = "file-info";
+          referenceInfo.textContent = "No reference file loaded.";
+          return;
+        }
+
+        var dimensions = referenceFileInfo.width && referenceFileInfo.height
+          ? referenceFileInfo.width + " × " + referenceFileInfo.height + " px"
+          : "dimensions pending";
+        var details = referenceFileInfo.name + " · " + referenceFileInfo.type + " · " + referenceFileInfo.size + " bytes · " + dimensions;
+
+        if (referenceFileInfo.size > 10 * 1024 * 1024) {
+          referenceInfo.className = "file-info warning";
+          referenceInfo.textContent = "Warning: file exceeds 10 MB. " + details;
+        } else {
+          referenceInfo.className = "file-info";
+          referenceInfo.textContent = details;
+        }
+      }
+
       function addOriginalCard() {
         if (!referenceDataUrl) return;
         var card = document.createElement("article");
@@ -449,13 +490,13 @@
         card.className = "result-card";
 
         var title = document.createElement("h3");
-        title.textContent = "Blur " + record.referenceImageBlur;
+        title.textContent = "Test #" + record.testIndex + " · Blur " + record.referenceImageBlur;
         var img = document.createElement("img");
         img.src = record.generatedImageUrl;
         img.alt = "Generated result for blur " + record.referenceImageBlur;
         var meta = document.createElement("div");
         meta.className = "result-meta";
-        meta.textContent = record.elapsedMs + " ms · seed " + record.seedRequested + " · " + record.resolution;
+        meta.textContent = "Blur " + record.referenceImageBlur + " · seed " + record.seedRequested + " · guidance " + record.guidanceScale + " · " + record.resolution + " · " + record.elapsedMs + " ms";
         var download = document.createElement("a");
         download.className = "download-link";
         download.href = record.generatedImageUrl;
@@ -494,6 +535,7 @@
         var generatedImageUrl = await extractImageUrl(rawResult);
         var elapsedMs = Date.now() - startedMs;
         var record = {
+          testIndex: history.length + 1,
           testId: createTestId(),
           createdAt: startedAt.toISOString(),
           prompt: params.prompt,
@@ -529,9 +571,22 @@
         var reader = new FileReader();
         reader.onload = function () {
           referenceDataUrl = String(reader.result || "");
+          referenceFileInfo = {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            width: null,
+            height: null
+          };
+          originalPreview.onload = function () {
+            referenceFileInfo.width = originalPreview.naturalWidth;
+            referenceFileInfo.height = originalPreview.naturalHeight;
+            renderReferenceInfo();
+          };
           originalPreview.src = referenceDataUrl;
           originalPreview.style.display = "block";
           previewEmpty.style.display = "none";
+          renderReferenceInfo();
           setStatus("Reference image loaded in memory. No generation has started.", "ok");
         };
         reader.onerror = function () {
@@ -561,7 +616,9 @@
         setRunning(true);
         try {
           var fixed = readInputs(blurMatrix[0]);
+          history = [];
           clearResultCards();
+          updateCount();
           addOriginalCard();
 
           for (var i = 0; i < blurMatrix.length; i += 1) {
@@ -600,7 +657,25 @@
         if (running) return;
         clearError();
         try {
-          var json = JSON.stringify(history, null, 2);
+          var safeHistory = history.map(function (record) {
+            return {
+              testIndex: record.testIndex,
+              testId: record.testId,
+              createdAt: record.createdAt,
+              prompt: record.prompt,
+              negativePrompt: record.negativePrompt,
+              seedRequested: record.seedRequested,
+              resolution: record.resolution,
+              guidanceScale: record.guidanceScale,
+              referenceImageBlur: record.referenceImageBlur,
+              elapsedMs: record.elapsedMs,
+              rawResultType: record.rawResultType,
+              generatedImageStorage: record.generatedImageUrl.indexOf("data:image/") === 0
+                ? "data-url-omitted"
+                : record.generatedImageUrl
+            };
+          });
+          var json = JSON.stringify(safeHistory, null, 2);
           var blob = new Blob([json], { type: "application/json" });
           var objectUrl = URL.createObjectURL(blob);
           var link = document.createElement("a");

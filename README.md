@@ -7,6 +7,7 @@ Minimal Perchance test bench for auditing the official `text-to-image-plugin` `r
 - `01_PERCHANCE_LEFT_PANEL.txt`: Perchance data/code panel.
 - `02_PERCHANCE_HTML_PANEL.html`: complete HTML, CSS and JavaScript application.
 - `16_MATRIZ_CAPACIDADES_4_MODOS_20260704.md`: verified capability matrix for text/photo/video modes.
+- `17_CIERRE_EXPERIMENTO_REFERENCEIMAGE_NEGATIVO_20260704.md`: negative experiment conclusion and scope.
 
 ## Current deployment
 
