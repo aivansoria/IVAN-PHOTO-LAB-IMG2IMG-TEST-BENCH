@@ -4,7 +4,7 @@ Fecha: 2026-07-04
 
 ## Resultado ejecutivo
 
-- Imagen a imagen: técnicamente posible con el `text-to-image-plugin` oficial mediante `referenceImage`. Los modificadores comunitarios auditados no lo usan correctamente.
+- Imagen a imagen: técnicamente posible con el `text-to-image-plugin` oficial mediante `referenceImage`, pero no equivale a bloqueo de identidad ni control de pose. Los modificadores comunitarios auditados no lo usan correctamente.
 - Imagen a vídeo: no aparece un backend nativo de Perchance. La opción real encontrada es un `iframe` hacia Hugging Face Spaces que ejecuta WAN 2.2 I2V.
 - El generador `pretty-ai-video-generator` no usa un modelo de vídeo. Genera imágenes independientes y las codifica localmente como WebM, con GIF como fallback.
 
