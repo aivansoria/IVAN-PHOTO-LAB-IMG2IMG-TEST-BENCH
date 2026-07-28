@@ -1,0 +1,38 @@
+name: Catastro page 5 validation
+
+on:
+  push:
+    branches:
+      - catastro-page5-validation-20260728
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check requests
+
+      - name: Validate Campo Alto candidates
+        run: python catastro_page5/validate.py
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catastro-page5-results
+          path: catastro_page5/results/
+          if-no-files-found: error
+          retention-days: 7
