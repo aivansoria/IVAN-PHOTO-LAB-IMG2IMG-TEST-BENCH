@@ -37,6 +37,9 @@ jobs:
       - name: Compare cadastral areas
         run: python catastro_page5/validate_areas.py
 
+      - name: Resolve second Camino Bisueca line
+        run: python catastro_page5/resolve_second_line.py
+
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
