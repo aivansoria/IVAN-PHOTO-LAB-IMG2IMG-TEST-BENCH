@@ -1,4 +1,4 @@
-name: Catastro page 6 validation
+name: Catastro page 7 validation
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
     branches:
       - main
     paths:
-      - "catastro_page6/**"
+      - "catastro_page7/**"
       - ".github/workflows/catastro-page5-validation.yml"
   workflow_dispatch:
 
@@ -18,7 +18,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,17 +31,14 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check requests
 
-      - name: Validate Campo Cercano page 6
-        run: python catastro_page6/validate_page6.py
-
-      - name: Resolve polygon ambiguities
-        run: python catastro_page6/resolve_page6.py
+      - name: Validate notebook page 7
+        run: python catastro_page7/validate_page7.py
 
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: catastro-page6-results
-          path: catastro_page6/results/
+          name: catastro-page7-results
+          path: catastro_page7/results/
           if-no-files-found: error
           retention-days: 7
