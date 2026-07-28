@@ -9,7 +9,7 @@ jobs:
       - name: Query Catastro
         run: |
           cat > /tmp/query.py <<'PY'
-          import csv,json,re,time,urllib.parse,urllib.request,xml.etree.ElementTree as ET
+          import csv,json,time,urllib.parse,urllib.request,xml.etree.ElementTree as ET
           T=[
           ('Azañón',22,5664,.06,[(22,5664),(22,5663),(22,5665)]),
           ('Frente Azañón / Palenque',24,5600,.23,[(24,5600),(24,5599),(24,5601)]),
@@ -25,22 +25,29 @@ jobs:
           ('Barranco Lunar',28,15016,.90,[(28,15016),(28,5016),(28,15015),(28,15017)]),
           ('Barranco Lunar',28,2738,.65,[(28,2738),(28,5738),(28,5739),(28,2739)])]
           def get(url):
-            q=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'})
-            return urllib.request.urlopen(q,timeout=40).read()
+            last=None
+            for attempt in range(5):
+              try:
+                q=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 CatastroValidation/2.0','Accept':'application/xml,text/xml,*/*'})
+                return urllib.request.urlopen(q,timeout=45).read()
+              except Exception as e:
+                last=e; time.sleep(1.2*(attempt+1))
+            raise last
           def lname(x): return x.split('}')[-1].lower()
+          def first(root,names):
+            for n in root.iter():
+              if lname(n.tag) in names and (n.text or '').strip(): return (n.text or '').strip()
+            return ''
           def query(pol,par):
             u='https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPPP?'+urllib.parse.urlencode({'Provincia':'SORIA','Municipio':'DEZA','Poligono':pol,'Parcela':par})
-            try:
-              raw=get(u); root=ET.fromstring(raw)
+            try: root=ET.fromstring(get(u))
             except Exception as e: return {'state':'ERROR','error':str(e),'polygon':pol,'parcel':par}
-            txt=' '.join((n.text or '').strip() for n in root.iter() if (n.text or '').strip())
-            refs=re.findall(r'\b\d{5}[A-Z]\d{8}[A-Z0-9]{0,6}\b',txt)
-            if not refs: return {'state':'NO_LOCALIZADA','polygon':pol,'parcel':par}
-            full=max(refs,key=len); ref=full[:14]; place=''
-            for n in root.iter():
-              if lname(n.tag) in {'ldt','ldt1','paraje'} and (n.text or '').strip(): place=(n.text or '').strip(); break
+            pc1=first(root,{'pc1'}); pc2=first(root,{'pc2'}); car=first(root,{'car'})
+            if not pc1 or not pc2: return {'state':'NO_LOCALIZADA','polygon':pol,'parcel':par}
+            ref=pc1+pc2; full=ref+car
+            place=first(root,{'npa','ldt','ldt1','paraje'})
             area=None
-            au='https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx?'+urllib.parse.urlencode({'service':'WFS','version':'2.0.0','request':'GetFeature','STOREDQUERY_ID':'GetParcel','refcat':ref,'srsname':'EPSG::25830'})
+            au='https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx?'+urllib.parse.urlencode({'service':'WFS','version':'2.0.0','request':'GetFeature','STOREDQUERIE_ID':'GetParcel','refcat':ref,'srsname':'EPSG::25830'})
             try:
               ar=ET.fromstring(get(au)); vals=[]
               for n in ar.iter():
@@ -51,20 +58,22 @@ jobs:
                 v=max(vals); area=v/10000 if v>100 else v
             except: pass
             return {'state':'VALIDADA','polygon':pol,'parcel':par,'official_place':place,'area_ha':round(area,4) if area is not None else None,'parcel_reference':ref,'full_reference':full,'map_url':'https://www1.sedecatastro.gob.es/Cartografia/BuscarParcelaInternet.aspx?refcat='+ref,'record_url':'https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCListaBienes.aspx?RC1='+ref[:7]+'&RC2='+ref[7:14]}
+          control=query(16,5306)
           out=[]
           for block,wp,wq,wa,cands in T:
             rr=[]
             for p,q in cands:
-              x=query(p,q); x['difference_ha']=round(abs(x['area_ha']-wa),4) if x.get('area_ha') is not None else None; rr.append(x); time.sleep(.3)
+              x=query(p,q); x['difference_ha']=round(abs(x['area_ha']-wa),4) if x.get('area_ha') is not None else None; rr.append(x); time.sleep(.5)
             valid=[x for x in rr if x['state']=='VALIDADA']; exact=[x for x in valid if x['polygon']==wp and x['parcel']==wq]
-            best=(exact[0] if exact else min([x for x in valid if x.get('difference_ha') is not None],key=lambda x:x['difference_ha'],default=(valid[0] if valid else None)))
+            area_valid=[x for x in valid if x.get('difference_ha') is not None]
+            best=exact[0] if exact else (min(area_valid,key=lambda x:x['difference_ha']) if area_valid else (valid[0] if valid else None))
             out.append({'block':block,'written_polygon':wp,'written_parcel':wq,'written_area_ha':wa,'exact_state':rr[0]['state'],'best':best,'candidates':rr})
-          json.dump(out,open('catastro_page8_resolution.json','w'),ensure_ascii=False,indent=2)
+          json.dump({'control':control,'records':out},open('catastro_page8_resolution.json','w'),ensure_ascii=False,indent=2)
           with open('catastro_page8_resolution.csv','w',encoding='utf-8-sig',newline='') as f:
             w=csv.writer(f,delimiter=';'); w.writerow(['Bloque','Pol_escrito','Parcela_escrita','Ha_escritas','Estado_exacto','Mejor_pol','Mejor_parcela','Paraje_oficial','Ha_oficiales','Diferencia','Referencia','URL_mapa'])
             for r in out:
               b=r['best'] or {}; w.writerow([r['block'],r['written_polygon'],r['written_parcel'],r['written_area_ha'],r['exact_state'],b.get('polygon',''),b.get('parcel',''),b.get('official_place',''),b.get('area_ha',''),b.get('difference_ha',''),b.get('parcel_reference',''),b.get('map_url','')])
-          print(json.dumps({'targets':len(out),'exact':sum(r['exact_state']=='VALIDADA' for r in out),'candidate':sum(bool(r['best']) for r in out)}))
+          print(json.dumps({'control':control,'targets':len(out),'exact':sum(r['exact_state']=='VALIDADA' for r in out),'candidate':sum(bool(r['best']) for r in out)},ensure_ascii=False))
           PY
           python /tmp/query.py
       - uses: actions/upload-artifact@v4
