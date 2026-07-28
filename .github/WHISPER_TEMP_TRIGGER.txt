@@ -1,0 +1,1 @@
+Temporary trigger for a public, non-sensitive Whisper bundle build. No audio or medical data is stored here.
