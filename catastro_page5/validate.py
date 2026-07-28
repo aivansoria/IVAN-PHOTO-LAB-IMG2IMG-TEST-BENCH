@@ -14,6 +14,7 @@ CANDIDATES = [
     ["p5-camino-vis-15-5520", "Deza", 15, 5520],
     ["p5-camino-alt-15-5420", "Deza", 15, 5420],
     ["p5-camino-vis-15-5870", "Deza", 15, 5870],
+    ["p5-camino-vis-16-5870", "Deza", 16, 5870],
     ["p5-camino-alt-15-5370", "Deza", 15, 5370],
     ["p5-camino-alt-15-5270", "Deza", 15, 5270],
     ["p5-camino-vis-15-5069", "Deza", 15, 5069],
@@ -79,7 +80,7 @@ def session() -> requests.Session:
     )
     s = requests.Session()
     s.mount("https://", HTTPAdapter(max_retries=retry))
-    s.headers.update({"User-Agent": "BaldoPage5Validator/1.0"})
+    s.headers.update({"User-Agent": "BaldoPage5Validator/1.1"})
     return s
 
 
@@ -94,15 +95,6 @@ def parse(item: list, text: str, url: str) -> dict:
         car = first(bi, "car")
         cc1 = first(bi, "cc1")
         cc2 = first(bi, "cc2")
-        subparcels = []
-        for spr in elements(bi, "spr"):
-            m2 = as_int(first(spr, "ssp"), 0)
-            subparcels.append({
-                "code": first(spr, "cspr"),
-                "use": first(spr, "dcc"),
-                "surface_m2": m2,
-                "surface_ha": round(m2 / 10000, 6),
-            })
         parsed.append({
             "polygon": as_int(first(bi, "cpo")),
             "parcel": as_int(first(bi, "cpa")),
@@ -111,8 +103,6 @@ def parse(item: list, text: str, url: str) -> dict:
             "cadastral_municipality_code": first(bi, "cmc"),
             "parcel_reference": pc1 + pc2,
             "full_reference": pc1 + pc2 + car + cc1 + cc2,
-            "subparcels": subparcels,
-            "total_surface_ha": round(sum(s["surface_m2"] for s in subparcels) / 10000, 6),
         })
     exact = [p for p in parsed if p["polygon"] == polygon and p["parcel"] == parcel]
     selected = exact[0] if exact else (parsed[0] if parsed else None)
@@ -174,7 +164,7 @@ def main() -> None:
     fields = [
         "id", "state", "municipality_requested", "polygon_requested", "parcel_requested",
         "official_place", "municipality", "parcel_reference", "full_reference",
-        "total_surface_ha", "map_url", "record_url", "error", "query_url",
+        "map_url", "record_url", "error", "query_url",
     ]
     with (OUT / "catastro_page5_results.csv").open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields, delimiter=";")
