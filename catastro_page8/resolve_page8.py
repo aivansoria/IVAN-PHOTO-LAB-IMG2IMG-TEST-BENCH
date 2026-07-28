@@ -13,13 +13,16 @@ from urllib3.util.retry import Retry
 CANDIDATES = [
     ("p8-resolve-dehesa-11-5127", 11, 5127, 0.17, "Dehesa"),
     ("p8-resolve-dehesa-11-5137", 11, 5137, 0.17, "Dehesa"),
-    *[(f"p8-resolve-azanon-22-{p}", 22, p, 0.06, "Azañón") for p in range(5660, 5670)],
+    ("p8-resolve-azanon-22-5564", 22, 5564, 0.06, "Azañón"),
+    ("p8-resolve-azanon-22-5664", 22, 5664, 0.06, "Azañón"),
     ("p8-resolve-melonar-22-5385", 22, 5385, 0.08, "Melonar"),
     ("p8-resolve-melonar-22-25385", 22, 25385, 0.08, "Melonar"),
-    ("p8-resolve-dehesa-28-5607", 28, 5607, 0.24, "Dehesa"),
+    ("p8-resolve-dehesa-28-25603", 28, 25603, 0.24, "Dehesa"),
+    ("p8-resolve-dehesa-28-5603", 28, 5603, 0.24, "Dehesa"),
     ("p8-resolve-dehesa-28-25607", 28, 25607, 0.24, "Dehesa"),
-    ("p8-resolve-barranco-28-5738", 28, 5738, 0.63, "Barranco Lunar"),
+    ("p8-resolve-dehesa-28-5607", 28, 5607, 0.24, "Dehesa"),
     ("p8-resolve-barranco-28-2738", 28, 2738, 0.63, "Barranco Lunar"),
+    ("p8-resolve-barranco-28-5738", 28, 5738, 0.63, "Barranco Lunar"),
 ]
 
 LOCAL = "https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPPP"
@@ -54,7 +57,7 @@ def make_session() -> requests.Session:
     )
     session = requests.Session()
     session.mount("https://", HTTPAdapter(max_retries=retry))
-    session.headers.update({"User-Agent": "BaldoPage8Resolver/2.0"})
+    session.headers.update({"User-Agent": "BaldoPage8Resolver/3.0"})
     return session
 
 
