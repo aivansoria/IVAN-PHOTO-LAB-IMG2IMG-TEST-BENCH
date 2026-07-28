@@ -34,6 +34,9 @@ jobs:
       - name: Validate Campo Alto candidates
         run: python catastro_page5/validate.py
 
+      - name: Compare cadastral areas
+        run: python catastro_page5/validate_areas.py
+
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
