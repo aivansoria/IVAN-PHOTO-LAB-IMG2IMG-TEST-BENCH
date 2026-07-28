@@ -1,4 +1,4 @@
-name: Catastro page 5 validation
+name: Catastro page 6 validation
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
     branches:
       - main
     paths:
-      - "catastro_page5/**"
+      - "catastro_page6/**"
       - ".github/workflows/catastro-page5-validation.yml"
   workflow_dispatch:
 
@@ -18,7 +18,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,20 +31,14 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --disable-pip-version-check requests
 
-      - name: Validate Campo Alto candidates
-        run: python catastro_page5/validate.py
-
-      - name: Compare cadastral areas
-        run: python catastro_page5/validate_areas.py
-
-      - name: Resolve second Camino Bisueca line
-        run: python catastro_page5/resolve_second_line.py
+      - name: Validate Campo Cercano page 6
+        run: python catastro_page6/validate_page6.py
 
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: catastro-page5-results
-          path: catastro_page5/results/
+          name: catastro-page6-results
+          path: catastro_page6/results/
           if-no-files-found: error
           retention-days: 7
