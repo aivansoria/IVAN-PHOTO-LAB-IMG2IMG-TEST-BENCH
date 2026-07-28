@@ -34,6 +34,9 @@ jobs:
       - name: Validate Vega y proximidades page 8
         run: python catastro_page8/validate_page8.py
 
+      - name: Resolve ambiguous page 8 digits
+        run: python catastro_page8/resolve_page8.py
+
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
