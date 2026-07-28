@@ -1,4 +1,4 @@
-name: Download temporary Whisper Large-v3 Turbo model
+name: Download split Whisper Large-v3 Turbo model
 
 on:
   pull_request:
@@ -8,24 +8,51 @@ permissions:
   contents: read
 
 jobs:
-  download-whisper-turbo:
+  download-split-whisper-turbo:
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - name: Download multilingual Large-v3 Turbo Q5 model
+      - name: Download and split multilingual Large-v3 Turbo Q5 model
         shell: bash
         run: |
           set -euxo pipefail
-          mkdir -p bundle
+          mkdir -p bundle parts/00 parts/01 parts/02
           curl --retry 5 --retry-delay 2 -L --fail \
             https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin \
             -o bundle/ggml-large-v3-turbo-q5_0.bin
           sha256sum bundle/ggml-large-v3-turbo-q5_0.bin | tee bundle/SHA256SUMS_TURBO.txt
+          split -b 190M -d -a 2 bundle/ggml-large-v3-turbo-q5_0.bin bundle/turbo.part.
+          cp bundle/turbo.part.00 parts/00/
+          cp bundle/turbo.part.01 parts/01/
+          cp bundle/turbo.part.02 parts/02/
+          cp bundle/SHA256SUMS_TURBO.txt parts/00/
+          cp bundle/SHA256SUMS_TURBO.txt parts/01/
+          cp bundle/SHA256SUMS_TURBO.txt parts/02/
+          sha256sum bundle/turbo.part.* | tee bundle/SHA256SUMS_PARTS.txt
+          cp bundle/SHA256SUMS_PARTS.txt parts/00/
+          cp bundle/SHA256SUMS_PARTS.txt parts/01/
+          cp bundle/SHA256SUMS_PARTS.txt parts/02/
 
-      - name: Upload Turbo model
+      - name: Upload Turbo part 00
         uses: actions/upload-artifact@v4
         with:
-          name: whisper-large-v3-turbo-q5_0
-          path: bundle/
+          name: whisper-turbo-part-00
+          path: parts/00/
+          retention-days: 1
+          compression-level: 0
+
+      - name: Upload Turbo part 01
+        uses: actions/upload-artifact@v4
+        with:
+          name: whisper-turbo-part-01
+          path: parts/01/
+          retention-days: 1
+          compression-level: 0
+
+      - name: Upload Turbo part 02
+        uses: actions/upload-artifact@v4
+        with:
+          name: whisper-turbo-part-02
+          path: parts/02/
           retention-days: 1
           compression-level: 0
