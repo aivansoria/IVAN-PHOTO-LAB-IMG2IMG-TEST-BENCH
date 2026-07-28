@@ -1,4 +1,4 @@
-name: Download temporary Whisper VAD model
+name: Download temporary Whisper Large-v3 Turbo model
 
 on:
   pull_request:
@@ -8,24 +8,24 @@ permissions:
   contents: read
 
 jobs:
-  download-vad-model:
+  download-whisper-turbo:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Download Silero VAD model
+      - name: Download multilingual Large-v3 Turbo Q5 model
         shell: bash
         run: |
           set -euxo pipefail
           mkdir -p bundle
           curl --retry 5 --retry-delay 2 -L --fail \
-            https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin \
-            -o bundle/ggml-silero-v6.2.0.bin
-          sha256sum bundle/ggml-silero-v6.2.0.bin | tee bundle/SHA256SUMS_VAD.txt
+            https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin \
+            -o bundle/ggml-large-v3-turbo-q5_0.bin
+          sha256sum bundle/ggml-large-v3-turbo-q5_0.bin | tee bundle/SHA256SUMS_TURBO.txt
 
-      - name: Upload VAD model
+      - name: Upload Turbo model
         uses: actions/upload-artifact@v4
         with:
-          name: whisper-vad-silero-v6.2.0
+          name: whisper-large-v3-turbo-q5_0
           path: bundle/
           retention-days: 1
           compression-level: 0
