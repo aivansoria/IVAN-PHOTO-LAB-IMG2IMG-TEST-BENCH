@@ -1,0 +1,47 @@
+name: Catastro page 8 validation
+
+on:
+  push:
+    branches:
+      - catastro-page5-validation-20260728
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "catastro_page8/**"
+      - ".github/workflows/catastro-page5-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check requests
+
+      - name: Validate Vega y proximidades page 8
+        run: python catastro_page8/validate_page8.py
+
+      - name: Resolve ambiguous page 8 digits
+        run: python catastro_page8/resolve_page8.py
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catastro-page8-results
+          path: catastro_page8/results/
+          if-no-files-found: error
+          retention-days: 7
