@@ -1,4 +1,4 @@
-name: Build temporary Whisper bundle
+name: Download temporary Whisper VAD model
 
 on:
   pull_request:
@@ -8,40 +8,24 @@ permissions:
   contents: read
 
 jobs:
-  build-whisper-bundle:
+  download-vad-model:
     runs-on: ubuntu-22.04
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
-      - name: Build whisper.cpp CLI
+      - name: Download Silero VAD model
         shell: bash
         run: |
           set -euxo pipefail
-          git clone --depth 1 --branch v1.7.6 https://github.com/ggerganov/whisper.cpp.git
-          cmake -S whisper.cpp -B whisper.cpp/build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DWHISPER_BUILD_TESTS=OFF \
-            -DWHISPER_BUILD_EXAMPLES=ON \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DGGML_NATIVE=OFF
-          cmake --build whisper.cpp/build --config Release --target whisper-cli -j2
           mkdir -p bundle
-          cp whisper.cpp/build/bin/whisper-cli bundle/
-          chmod +x bundle/whisper-cli
-
-      - name: Download multilingual Spanish-capable model
-        shell: bash
-        run: |
-          set -euxo pipefail
           curl --retry 5 --retry-delay 2 -L --fail \
-            https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin \
-            -o bundle/ggml-small-q5_1.bin
-          sha256sum bundle/whisper-cli bundle/ggml-small-q5_1.bin | tee bundle/SHA256SUMS.txt
-          ./bundle/whisper-cli --help > bundle/WHISPER_CLI_HELP.txt 2>&1 || true
+            https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin \
+            -o bundle/ggml-silero-v6.2.0.bin
+          sha256sum bundle/ggml-silero-v6.2.0.bin | tee bundle/SHA256SUMS_VAD.txt
 
-      - name: Upload bundle
+      - name: Upload VAD model
         uses: actions/upload-artifact@v4
         with:
-          name: whisper-linux-x64-small-q5_1
+          name: whisper-vad-silero-v6.2.0
           path: bundle/
           retention-days: 1
           compression-level: 0
