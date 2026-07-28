@@ -6,74 +6,69 @@ jobs:
   query:
     runs-on: ubuntu-latest
     steps:
-      - name: Query Catastro
+      - name: Directed second pass
         run: |
           cat > /tmp/query.py <<'PY'
           import csv,json,time,urllib.parse,urllib.request,xml.etree.ElementTree as ET
-          T=[
-          ('Azañón',22,5664,.06,[(22,5664),(22,5663),(22,5665)]),
-          ('Frente Azañón / Palenque',24,5600,.23,[(24,5600),(24,5599),(24,5601)]),
-          ('Melonar',22,25385,.08,[(22,25385),(22,5385),(22,15385)]),
-          ('Dehesa',11,5137,.17,[(11,5137),(11,5136),(11,5138)]),
-          ('Dehesa',11,5176,.21,[(11,5176),(11,5175),(11,5177)]),
-          ('Dehesa',26,25667,.24,[(26,25667),(26,5667),(26,15667)]),
-          ('Dehesa',26,5666,.49,[(26,5666),(26,5665),(26,5667)]),
-          ('Dehesa',26,5675,.25,[(26,5675),(26,5674),(26,5676)]),
-          ('Dehesa',26,5676,.25,[(26,5676),(26,5675),(26,5677)]),
-          ('Puente Cuadriella',71,5155,.33,[(71,5155),(7,5155),(11,5155),(17,5155),(21,5155)]),
-          ('Barranco Lunar',28,2082,.85,[(28,2082),(28,5082),(28,5182),(28,2083)]),
-          ('Barranco Lunar',28,15016,.90,[(28,15016),(28,5016),(28,15015),(28,15017)]),
-          ('Barranco Lunar',28,2738,.65,[(28,2738),(28,5738),(28,5739),(28,2739)])]
           def get(url):
             last=None
-            for attempt in range(5):
+            for attempt in range(3):
               try:
-                q=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 CatastroValidation/2.0','Accept':'application/xml,text/xml,*/*'})
-                return urllib.request.urlopen(q,timeout=45).read()
-              except Exception as e:
-                last=e; time.sleep(1.2*(attempt+1))
+                req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 CatastroValidation/3.0','Accept':'application/xml,text/xml,*/*'})
+                return urllib.request.urlopen(req,timeout=35).read()
+              except Exception as e: last=e; time.sleep(.7*(attempt+1))
             raise last
-          def lname(x): return x.split('}')[-1].lower()
+          def ln(tag): return tag.split('}')[-1].lower()
           def first(root,names):
             for n in root.iter():
-              if lname(n.tag) in names and (n.text or '').strip(): return (n.text or '').strip()
+              if ln(n.tag) in names and (n.text or '').strip(): return (n.text or '').strip()
             return ''
           def query(pol,par):
-            u='https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPPP?'+urllib.parse.urlencode({'Provincia':'SORIA','Municipio':'DEZA','Poligono':pol,'Parcela':par})
-            try: root=ET.fromstring(get(u))
-            except Exception as e: return {'state':'ERROR','error':str(e),'polygon':pol,'parcel':par}
-            pc1=first(root,{'pc1'}); pc2=first(root,{'pc2'}); car=first(root,{'car'})
-            if not pc1 or not pc2: return {'state':'NO_LOCALIZADA','polygon':pol,'parcel':par}
-            ref=pc1+pc2; full=ref+car
-            place=first(root,{'npa','ldt','ldt1','paraje'})
-            area=None
+            url='https://ovc.catastro.meh.es/ovcservweb/OVCSWLocalizacionRC/OVCCallejero.asmx/Consulta_DNPPP?'+urllib.parse.urlencode({'Provincia':'SORIA','Municipio':'DEZA','Poligono':pol,'Parcela':par})
+            try: root=ET.fromstring(get(url))
+            except Exception as e: return {'state':'ERROR','polygon':pol,'parcel':par,'error':str(e)}
+            pc1=first(root,{'pc1'});pc2=first(root,{'pc2'});car=first(root,{'car'})
+            if not pc1 or not pc2:return {'state':'NO_LOCALIZADA','polygon':pol,'parcel':par}
+            ref=pc1+pc2;area=None
             au='https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx?'+urllib.parse.urlencode({'service':'WFS','version':'2.0.0','request':'GetFeature','STOREDQUERIE_ID':'GetParcel','refcat':ref,'srsname':'EPSG::25830'})
             try:
-              ar=ET.fromstring(get(au)); vals=[]
+              ar=ET.fromstring(get(au));vals=[]
               for n in ar.iter():
-                if lname(n.tag) in {'areavalue','area'}:
-                  try: vals.append(float((n.text or '').strip()))
-                  except: pass
+                if ln(n.tag) in {'areavalue','area'}:
+                  try:vals.append(float((n.text or '').strip()))
+                  except:pass
               if vals:
-                v=max(vals); area=v/10000 if v>100 else v
-            except: pass
-            return {'state':'VALIDADA','polygon':pol,'parcel':par,'official_place':place,'area_ha':round(area,4) if area is not None else None,'parcel_reference':ref,'full_reference':full,'map_url':'https://www1.sedecatastro.gob.es/Cartografia/BuscarParcelaInternet.aspx?refcat='+ref,'record_url':'https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCListaBienes.aspx?RC1='+ref[:7]+'&RC2='+ref[7:14]}
-          control=query(16,5306)
-          out=[]
-          for block,wp,wq,wa,cands in T:
-            rr=[]
-            for p,q in cands:
-              x=query(p,q); x['difference_ha']=round(abs(x['area_ha']-wa),4) if x.get('area_ha') is not None else None; rr.append(x); time.sleep(.5)
-            valid=[x for x in rr if x['state']=='VALIDADA']; exact=[x for x in valid if x['polygon']==wp and x['parcel']==wq]
-            area_valid=[x for x in valid if x.get('difference_ha') is not None]
-            best=exact[0] if exact else (min(area_valid,key=lambda x:x['difference_ha']) if area_valid else (valid[0] if valid else None))
-            out.append({'block':block,'written_polygon':wp,'written_parcel':wq,'written_area_ha':wa,'exact_state':rr[0]['state'],'best':best,'candidates':rr})
-          json.dump({'control':control,'records':out},open('catastro_page8_resolution.json','w'),ensure_ascii=False,indent=2)
+                v=max(vals);area=v/10000 if v>100 else v
+            except:pass
+            return {'state':'VALIDADA','polygon':pol,'parcel':par,'official_place':first(root,{'npa','ldt','ldt1','paraje'}),'area_ha':round(area,4) if area is not None else None,'parcel_reference':ref,'full_reference':ref+car,'map_url':'https://www1.sedecatastro.gob.es/Cartografia/BuscarParcelaInternet.aspx?refcat='+ref,'record_url':'https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCListaBienes.aspx?RC1='+ref[:7]+'&RC2='+ref[7:14]}
+          direct_specs={
+            'azanon':[(22,15664),(22,25664),(22,5564),(22,5764)],
+            'frente_azanon':[(24,15600),(24,25600),(24,5500),(24,5700)],
+            'dehesa_pol28':[(28,25667),(28,15667),(28,5667),(28,5666),(28,5675),(28,5676)],
+            'puente':[(11,5155)],
+            'melonar':[(22,5385),(22,15385),(22,25385)]
+          }
+          direct={}
+          for name,specs in direct_specs.items():
+            direct[name]=[]
+            for p,q in specs:
+              direct[name].append(query(p,q));time.sleep(.3)
+          scan=[]
+          for par in range(5700,5800):
+            r=query(28,par)
+            if r.get('state')=='VALIDADA':
+              place=(r.get('official_place') or '').upper()
+              area=r.get('area_ha')
+              if 'LUNAR' in place or (area is not None and min(abs(area-x) for x in (.65,.85,.90))<=.12):scan.append(r)
+            time.sleep(.12)
+          payload={'direct':direct,'barranco_lunar_scan_5700_5799':scan}
+          json.dump(payload,open('catastro_page8_resolution.json','w'),ensure_ascii=False,indent=2)
           with open('catastro_page8_resolution.csv','w',encoding='utf-8-sig',newline='') as f:
-            w=csv.writer(f,delimiter=';'); w.writerow(['Bloque','Pol_escrito','Parcela_escrita','Ha_escritas','Estado_exacto','Mejor_pol','Mejor_parcela','Paraje_oficial','Ha_oficiales','Diferencia','Referencia','URL_mapa'])
-            for r in out:
-              b=r['best'] or {}; w.writerow([r['block'],r['written_polygon'],r['written_parcel'],r['written_area_ha'],r['exact_state'],b.get('polygon',''),b.get('parcel',''),b.get('official_place',''),b.get('area_ha',''),b.get('difference_ha',''),b.get('parcel_reference',''),b.get('map_url','')])
-          print(json.dumps({'control':control,'targets':len(out),'exact':sum(r['exact_state']=='VALIDADA' for r in out),'candidate':sum(bool(r['best']) for r in out)},ensure_ascii=False))
+            w=csv.writer(f,delimiter=';');w.writerow(['Grupo','Poligono','Parcela','Estado','Paraje','Ha','Referencia','URL_mapa'])
+            for name,items in direct.items():
+              for r in items:w.writerow([name,r.get('polygon'),r.get('parcel'),r.get('state'),r.get('official_place',''),r.get('area_ha',''),r.get('parcel_reference',''),r.get('map_url','')])
+            for r in scan:w.writerow(['barranco_lunar_scan',r.get('polygon'),r.get('parcel'),r.get('state'),r.get('official_place',''),r.get('area_ha',''),r.get('parcel_reference',''),r.get('map_url','')])
+          print(json.dumps({'direct_valid':sum(r.get('state')=='VALIDADA' for items in direct.values() for r in items),'scan_matches':len(scan)},ensure_ascii=False))
           PY
           python /tmp/query.py
       - uses: actions/upload-artifact@v4
