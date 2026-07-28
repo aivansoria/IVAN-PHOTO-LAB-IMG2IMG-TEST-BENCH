@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - catastro-page5-validation-20260728
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "catastro_page5/**"
+      - ".github/workflows/catastro-page5-validation.yml"
   workflow_dispatch:
 
 permissions:
