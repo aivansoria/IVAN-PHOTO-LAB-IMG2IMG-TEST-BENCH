@@ -1,4 +1,4 @@
-name: Download temporary Spanish Wav2Vec2 model
+name: Download temporary RNNoise models
 
 on:
   pull_request:
@@ -8,24 +8,24 @@ permissions:
   contents: read
 
 jobs:
-  download-spanish-wav2vec2:
+  collect-rnnoise-models:
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
-      - name: Download VoxPopuli Spanish ASR model
+      - name: Collect RNNoise model files
         shell: bash
         run: |
           set -euxo pipefail
+          git clone --depth 1 https://github.com/GregorR/rnnoise-models.git source
           mkdir -p bundle
-          curl --retry 5 --retry-delay 2 -L --fail \
-            https://download.pytorch.org/torchaudio/models/wav2vec2_voxpopuli_base_10k_asr_es.pt \
-            -o bundle/wav2vec2_voxpopuli_base_10k_asr_es.pt
-          sha256sum bundle/wav2vec2_voxpopuli_base_10k_asr_es.pt | tee bundle/SHA256SUMS.txt
+          find source -type f \( -name '*.rnnn' -o -name '*.model' -o -name 'weights_blob.bin' \) -print
+          find source -type f \( -name '*.rnnn' -o -name '*.model' -o -name 'weights_blob.bin' \) -exec cp --parents '{}' bundle/ \;
+          find bundle -type f -exec sha256sum '{}' \; | tee bundle/SHA256SUMS.txt
 
-      - name: Upload Spanish ASR model
+      - name: Upload RNNoise models
         uses: actions/upload-artifact@v4
         with:
-          name: wav2vec2-voxpopuli-es
+          name: rnnoise-models
           path: bundle/
           retention-days: 1
           compression-level: 0
