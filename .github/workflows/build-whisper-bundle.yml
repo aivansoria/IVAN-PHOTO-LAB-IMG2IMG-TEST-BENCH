@@ -1,4 +1,4 @@
-name: Download temporary RNNoise models
+name: Download temporary MetricGAN voice enhancement model
 
 on:
   pull_request:
@@ -8,24 +8,26 @@ permissions:
   contents: read
 
 jobs:
-  collect-rnnoise-models:
+  collect-metricgan:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Collect RNNoise model files
+      - name: Download SpeechBrain MetricGAN+ model
         shell: bash
         run: |
           set -euxo pipefail
-          git clone --depth 1 https://github.com/GregorR/rnnoise-models.git source
-          mkdir -p bundle
-          find source -type f \( -name '*.rnnn' -o -name '*.model' -o -name 'weights_blob.bin' \) -print
-          find source -type f \( -name '*.rnnn' -o -name '*.model' -o -name 'weights_blob.bin' \) -exec cp --parents '{}' bundle/ \;
-          find bundle -type f -exec sha256sum '{}' \; | tee bundle/SHA256SUMS.txt
+          git lfs install
+          git clone --depth 1 https://huggingface.co/speechbrain/metricgan-plus-voicebank model
+          cd model
+          git lfs pull
+          cd ..
+          rm -rf model/.git
+          find model -type f -exec sha256sum '{}' \; | tee model/SHA256SUMS.txt
 
-      - name: Upload RNNoise models
+      - name: Upload MetricGAN model
         uses: actions/upload-artifact@v4
         with:
-          name: rnnoise-models
-          path: bundle/
+          name: speechbrain-metricgan-plus-voicebank
+          path: model/
           retention-days: 1
           compression-level: 0
