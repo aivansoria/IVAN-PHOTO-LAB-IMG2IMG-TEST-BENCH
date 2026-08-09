@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lector PDF">
+<title>Lector PDF · iPhone</title>
+<style>
+:root{color-scheme:dark;--bg:#08111f;--card:#111c2e;--line:#26364c;--txt:#eef5ff;--mut:#9fb0c7;--blue:#20a4f3;--green:#21c77a;--amber:#f5a623}*{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#08111f,#0c1728 55%,#08111f);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:max(16px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));min-height:100dvh}.app{max-width:760px;margin:auto}h1{font-size:1.7rem;margin:4px 0 6px}.sub{color:var(--mut);line-height:1.4;margin:0 0 15px}.card{background:rgba(17,28,46,.94);border:1px solid var(--line);border-radius:18px;padding:15px;margin:12px 0;box-shadow:0 18px 45px rgba(0,0,0,.22)}label.file{display:grid;place-items:center;min-height:92px;border:1px dashed #55708f;border-radius:14px;text-align:center;padding:14px;cursor:pointer;background:#0c1728}input[type=file]{display:none}button,select,input[type=range]{font:inherit}button{border:0;border-radius:13px;min-height:50px;padding:11px 14px;color:white;background:#26384e;font-weight:800}button.primary{background:linear-gradient(135deg,#0f89d8,#20a4f3)}button.good{background:linear-gradient(135deg,#168d58,#21c77a)}button.warn{background:linear-gradient(135deg,#b56908,#f5a623)}button:disabled{opacity:.4}.row{display:flex;gap:9px;flex-wrap:wrap}.row button{flex:1 1 140px}.field{margin:11px 0}.field label{display:flex;justify-content:space-between;color:#dbe7f5;font-size:.92rem;margin-bottom:6px}.field select{width:100%;min-height:46px;background:#0b1626;color:white;border:1px solid var(--line);border-radius:12px;padding:8px;font-size:16px}.field input{width:100%}.status{font-size:.9rem;color:#c8d8eb;line-height:1.45}.progress{height:11px;background:#0a1320;border-radius:99px;overflow:hidden;margin-top:10px}.bar{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--green));transition:.15s}.reader{max-height:42dvh;overflow:auto;white-space:pre-wrap;line-height:1.65;background:#091321;border:1px solid var(--line);border-radius:14px;padding:14px;font-size:1rem}.reader.empty{color:var(--mut)}.pill{display:inline-block;border:1px solid #31506f;border-radius:99px;padding:5px 9px;font-size:.76rem;color:#bfe6ff;background:#0a2036}.privacy{color:#9ce9be;font-size:.82rem;margin-top:8px}.install{display:none;border:1px solid #245c7d;background:#0b2337;color:#d7f1ff;border-radius:14px;padding:12px;margin:12px 0;font-size:.9rem;line-height:1.4}@media(max-width:480px){h1{font-size:1.45rem}.card{padding:13px}.row button{flex-basis:44%}.reader{max-height:46dvh}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+<div class="app">
+<div id="install" class="install"><strong>Instalar en iPhone:</strong> Safari → Compartir → Añadir a pantalla de inicio.</div>
+<h1>🔊 Lector PDF</h1>
+<p class="sub">Abre un PDF desde Archivos o iCloud y escúchalo con voz española de España.</p>
+<div class="card">
+<label class="file" for="file"><span><strong>📄 Abrir PDF</strong><br><small>Selecciona el documento desde Archivos/iCloud</small></span></label>
+<input id="file" type="file" accept="application/pdf,.pdf,text/plain,.txt">
+<div class="privacy">🔒 El documento se procesa en tu iPhone. No se sube a ningún servidor.</div>
+</div>
+<div class="card">
+<div class="field"><label><span>Voz</span><span id="voiceState">cargando…</span></label><select id="voice"></select></div>
+<div class="field"><label><span>Velocidad</span><span id="rateVal">1.00×</span></label><input id="rate" type="range" min="0.65" max="1.55" step="0.05" value="1"></div>
+<div class="row"><button id="play" class="good">▶ Leer</button><button id="pause" class="warn">⏸ Pausa</button><button id="resume" class="primary">▶ Continuar</button><button id="stop">■ Detener</button></div>
+<div class="progress"><div id="bar" class="bar"></div></div>
+<p id="status" class="status">Abre un PDF para comenzar.</p>
+</div>
+<div class="card"><div class="row" style="align-items:center;justify-content:space-between"><strong>Documento</strong><span id="page" class="pill">—</span></div><div id="reader" class="reader empty">Aquí aparecerá el texto extraído del PDF.</div></div>
+</div>
+<script>
+const $=id=>document.getElementById(id),file=$('file'),voiceSel=$('voice'),rate=$('rate'),rateVal=$('rateVal'),statusEl=$('status'),reader=$('reader'),bar=$('bar'),pageEl=$('page');
+let voices=[],chunks=[],idx=0,reading=false,paused=false,current=null;
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;if(isIOS&&!standalone)$('install').style.display='block';
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+function score(v){let s=0,n=(v.name+' '+v.lang).toLowerCase();if((v.lang||'').toLowerCase().startsWith('es-es'))s+=120;else if((v.lang||'').toLowerCase().startsWith('es'))s+=70;if(n.includes('mónica')||n.includes('monica')||n.includes('jorge'))s+=20;if(v.localService)s+=10;return s}
+function loadVoices(){voices=speechSynthesis.getVoices()||[];let ordered=voices.map((v,i)=>({v,i,s:score(v)})).sort((a,b)=>b.s-a.s);voiceSel.innerHTML='';ordered.forEach(o=>{let x=document.createElement('option');x.value=o.i;x.textContent=o.v.name+' — '+o.v.lang;voiceSel.appendChild(x)});if(ordered[0])voiceSel.value=ordered[0].i;$('voiceState').textContent=voices.length?voices.length+' voces':'sin voces'}
+loadVoices();if('speechSynthesis'in window){speechSynthesis.onvoiceschanged=loadVoices;setTimeout(loadVoices,500);setTimeout(loadVoices,1400)}
+rate.oninput=()=>rateVal.textContent=Number(rate.value).toFixed(2)+'×';
+function clean(s){return s.replace(/https?:\/\/\S+/g,' ').replace(/[•▪◦●■◆►]+/g,' ').replace(/\s+/g,' ').trim()}
+function splitText(text,page){let out=[],max=isIOS?420:650,rest=clean(text);while(rest.length>max){let cut=Math.max(rest.lastIndexOf('. ',max),rest.lastIndexOf('; ',max),rest.lastIndexOf(', ',max));if(cut<max*.55)cut=rest.lastIndexOf(' ',max);if(cut<1)cut=max;out.push({text:rest.slice(0,cut+1).trim(),page});rest=rest.slice(cut+1).trim()}if(rest)out.push({text:rest,page});return out}
+async function readPdf(f){statusEl.textContent='Extrayendo texto…';const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;chunks=[];let all=[];for(let p=1;p<=pdf.numPages;p++){statusEl.textContent=`Procesando página ${p} de ${pdf.numPages}…`;let pg=await pdf.getPage(p),c=await pg.getTextContent(),t=c.items.map(x=>x.str).join(' ');let cs=splitText(t,p);chunks.push(...cs);all.push(`\n\nPÁGINA ${p}\n${t}`)}idx=0;reader.className='reader';reader.textContent=all.join('');pageEl.textContent=`${pdf.numPages} páginas`;bar.style.width='0%';statusEl.textContent=`Documento listo · ${chunks.length} fragmentos. Pulsa Leer.`}
+file.onchange=async()=>{let f=file.files?.[0];if(!f)return;try{stop();if(f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf'))await readPdf(f);else{let t=await f.text();chunks=splitText(t,1);reader.className='reader';reader.textContent=t;statusEl.textContent='Texto listo. Pulsa Leer.'}}catch(e){console.error(e);statusEl.textContent='No se pudo leer el archivo. Si es un PDF escaneado necesita OCR.'}};
+function selectedVoice(){return voices[Number(voiceSel.value)]||null}
+function update(){let total=chunks.length;bar.style.width=total?Math.round((idx/total)*100)+'%':'0%';if(total&&chunks[Math.min(idx,total-1)])pageEl.textContent='Página '+chunks[Math.min(idx,total-1)].page}
+function speak(){if(!reading||idx>=chunks.length){finish();return}speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(chunks[idx].text),v=selectedVoice();if(v)u.voice=v;u.lang=v?.lang||'es-ES';u.rate=Number(rate.value);u.pitch=1;u.volume=1;current=u;u.onstart=()=>{reading=true;paused=false;update();statusEl.textContent=`Leyendo fragmento ${idx+1} de ${chunks.length} · página ${chunks[idx].page}`};u.onend=()=>{if(!reading)return;idx++;update();setTimeout(speak,120)};u.onerror=e=>{if(!['interrupted','canceled'].includes(e.error)){statusEl.textContent='La voz se ha detenido. Pulsa Continuar.';paused=true}};speechSynthesis.speak(u)}
+function play(){if(!chunks.length){statusEl.textContent='Primero abre un PDF.';return}if(idx>=chunks.length)idx=0;reading=true;paused=false;speak()}
+function pause(){if(!reading)return;speechSynthesis.pause();paused=true;statusEl.textContent='Lectura pausada.'}
+function resume(){if(!chunks.length)return;if(paused){speechSynthesis.resume();paused=false;statusEl.textContent='Lectura reanudada.'}else{reading=true;speak()}}
+function stop(){reading=false;paused=false;try{speechSynthesis.cancel()}catch{}update()}
+function finish(){reading=false;paused=false;try{speechSynthesis.cancel()}catch{}idx=Math.min(idx,chunks.length);bar.style.width=chunks.length?'100%':'0%';statusEl.textContent=chunks.length?'Lectura terminada.':'Abre un PDF para comenzar.'}
+$('play').onclick=play;$('pause').onclick=pause;$('resume').onclick=resume;$('stop').onclick=stop;window.addEventListener('beforeunload',()=>speechSynthesis.cancel());
+</script>
+</body>
+</html>
